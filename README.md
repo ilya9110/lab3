@@ -1,7 +1,7 @@
 # lab3
 # АНАЛИЗ ДАННЫХ И ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ [in GameDev]
-# 2 ЛАБОРАТОРНАЯ РАБОТА. СБОР, ОБРАБОТКА И ВИЗУАЛИЗАЦИЯ ТЕСТОВОГО НАБОРА ДАННЫХ.
-Отчет по лабораторной работе #2 выполнил(а):
+# 3 ЛАБОРАТОРНАЯ РАБОТА. РАЗРАБОТКА СИСТЕМЫ МАШИННОГО ОБУЧЕНИЯ.
+Отчет по лабораторной работе #3 выполнил(а):
 - Маслий Илья Андреевич
 - РИ211102
 Отметка о выполнении заданий (заполняется студентом):
@@ -9,8 +9,8 @@
 | Задание | Выполнение | Баллы |
 | ------ | ------ | ------ |
 | Задание 1 | * | 60 |
-| Задание 2 | * | 20 |
-| Задание 3 | * | 20 |
+| Задание 2 | # | 20 |
+| Задание 3 | # | 20 |
 
 знак "*" - задание выполнено; знак "#" - задание не выполнено;
 
@@ -24,114 +24,100 @@
 [![Build Status](https://travis-ci.org/joemccann/dillinger.svg?branch=master)](https://travis-ci.org/joemccann/dillinger)
 
 ## Цель работы
-Познакомиться с программными средствами для организции передачи данных между инструментами google, Python и Unity
+познакомиться с программными средствами для создания системы машинного обучения и ее интеграции в Unity.
 
 ## Задание 1
 Ход работы:
-Реализовать совместную работу и передачу данных в связке Python- Google-Sheets – Unity.
-- В облачном сервисе google console подключить API для работы с google sheets и google drive.
-![image](https://user-images.githubusercontent.com/29748577/195107335-7c979093-39b1-4fb4-a69c-a517345381e9.png)
-- Реализовать запись данных из скрипта на python в google-таблицу. Данные описывают изменение темпа инфляции на протяжении 11 отсчётных периодов, с учётом стоимости игрового объекта в каждый период.
-Генерация чисел: ![image](https://user-images.githubusercontent.com/29748577/195107706-e020459b-37e7-48e9-8e03-563cd91662ed.png)
-Запись в гугл таблицу: ![image](https://user-images.githubusercontent.com/29748577/195107979-3f663f9f-0201-4c33-8485-f3b464e44fd5.png)
-- Создать новый проект на Unity, который будет получать данные из google-таблицы, в которую были записаны данные в предыдущем пункте.
-![image](https://user-images.githubusercontent.com/29748577/195108582-c5e38666-3fb2-4992-a507-1751fefca984.png)
-- Написать функционал на Unity, в котором будет воспризводиться аудио-файл в зависимости от значения данных из таблицы.
-Скриншот из Unity: ![image](https://user-images.githubusercontent.com/29748577/195109203-0de58b92-eaf3-40d8-9b99-d73acbb6c693.png)
+Реализовать систему машинного обучения в связке Python - Google-Sheets – Unity.
+- Создайте новый пустой 3D проект на Unity.
+![image](https://user-images.githubusercontent.com/29748577/198320308-476550d6-f9b4-42da-a5ef-7fb3d22a6ebb.png)
+
+- В созданный проект добавьте ML Agent, выбрав Window - Package Manager - Add Package from disk.
+Если все сделано правильно, то во вкладке с компонентами (Components) внутри Unity вы увидите строку ML Agent.
+![image](https://user-images.githubusercontent.com/29748577/198321195-8607a148-2114-4112-9338-ddfbdf596a82.png)
+
+- Далее пишем серию команд для создания и активации нового ML-агента, а также для скачивания необходимых библиотек:
+o mlagents 0.28.0;
+o torch 1.7.1;
+![image](https://user-images.githubusercontent.com/29748577/198321998-4ac4af91-2094-40bd-9189-b47d7b906787.png)
+![image](https://user-images.githubusercontent.com/29748577/198322127-360ffc59-1199-42c3-87ed-475aa08a0cad.png)
+![image](https://user-images.githubusercontent.com/29748577/198322286-666ea71e-af79-48ac-87b8-b9022c0579fe.png)
+![image](https://user-images.githubusercontent.com/29748577/198322464-b6ebef79-3408-48e5-931b-09a54d14fd19.png)
+
+- Создайте на сцене плоскость, куб и сферу так, как показано на рисунке ниже. Создайте простой C# скрипт-файл и подключите его к сфере:
+![image](https://user-images.githubusercontent.com/29748577/198322863-ff3ddc15-a76e-4a3b-b072-e2066e28a23f.png)
+- В скрипт-файл RollerAgent.cs добавьте код, опубликованный в материалах лабораторных работ – по ссылке.
 Код скрипта:
 ```py
 
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Networking;
-using SimpleJSON;
+using Unity.MLAgents;
+using Unity.MLAgents.Sensors;
+using Unity.MLAgents.Actuators;
 
-public class NewBehaviourScript : MonoBehaviour
+public class RollerAgent : Agent
 {
-    public AudioClip goodSpeak;
-    public AudioClip normalSpeak;
-    public AudioClip badSpeak;
-    private AudioSource selectAudio;
-    private Dictionary<string,float> dataSet = new Dictionary<string, float>();
-    private bool statusStart = false;
-    private int i = 1;
-
+    Rigidbody rBody;
     // Start is called before the first frame update
     void Start()
     {
-        StartCoroutine(GoogleSheets());
+        rBody = GetComponent<Rigidbody>();
     }
 
-    // Update is called once per frame
-    void Update()
+    public Transform Target;
+    public override void OnEpisodeBegin()
     {
-        if (dataSet["Mon_" + i.ToString()] <= 10 & statusStart == false & i != dataSet.Count)
+        if (this.transform.localPosition.y < 0)
         {
-            StartCoroutine(PlaySelectAudioGood());
-            Debug.Log(dataSet["Mon_" + i.ToString()]);
+            this.rBody.angularVelocity = Vector3.zero;
+            this.rBody.velocity = Vector3.zero;
+            this.transform.localPosition = new Vector3(0, 0.5f, 0);
         }
 
-        if (dataSet["Mon_" + i.ToString()] > 10 & dataSet["Mon_" + i.ToString()] < 100 & statusStart == false & i != dataSet.Count)
-        {
-            StartCoroutine(PlaySelectAudioNormal());
-            Debug.Log(dataSet["Mon_" + i.ToString()]);
-        }
+        Target.localPosition = new Vector3(Random.value * 8-4, 0.5f, Random.value * 8-4);
+    }
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        sensor.AddObservation(Target.localPosition);
+        sensor.AddObservation(this.transform.localPosition);
+        sensor.AddObservation(rBody.velocity.x);
+        sensor.AddObservation(rBody.velocity.z);
+    }
+    public float forceMultiplier = 10;
+    public override void OnActionReceived(ActionBuffers actionBuffers)
+    {
+        Vector3 controlSignal = Vector3.zero;
+        controlSignal.x = actionBuffers.ContinuousActions[0];
+        controlSignal.z = actionBuffers.ContinuousActions[1];
+        rBody.AddForce(controlSignal * forceMultiplier);
 
-        if (dataSet["Mon_" + i.ToString()] >= 100 & statusStart == false & i != dataSet.Count)
-        {
-            StartCoroutine(PlaySelectAudioBad());
-            Debug.Log(dataSet["Mon_" + i.ToString()]);
-        }
-    }
+        float distanceToTarget = Vector3.Distance(this.transform.localPosition, Target.localPosition);
 
-    IEnumerator GoogleSheets()
-    {
-        UnityWebRequest curentResp = UnityWebRequest.Get("https://sheets.googleapis.com/v4/spreadsheets/1Uvav6XaYcGg3mDLhNo8hEkHhsjnl72Ar_S51Y_qFCQc/values/Лист1?key=AIzaSyD_iIQAKPc3KEGTseo2la69RLaPQ8B_gY0");
-        yield return curentResp.SendWebRequest();
-        string rawResp = curentResp.downloadHandler.text;
-        var rawJson = JSON.Parse(rawResp);
-        foreach (var itemRawJson in rawJson["values"])
+        if(distanceToTarget < 1.42f)
         {
-            var parseJson = JSON.Parse(itemRawJson.ToString());
-            var selectRow = parseJson[0].AsStringList;
-            dataSet.Add(("Mon_" + selectRow[0]), float.Parse(selectRow[2]));
+            SetReward(1.0f);
+            EndEpisode();
         }
-    }
-
-    IEnumerator PlaySelectAudioGood()
-    {
-        statusStart = true;
-        selectAudio = GetComponent<AudioSource>();
-        selectAudio.clip = goodSpeak;
-        selectAudio.Play();
-        yield return new WaitForSeconds(3);
-        statusStart = false;
-        i++;
-    }
-    IEnumerator PlaySelectAudioNormal()
-    {
-        statusStart = true;
-        selectAudio = GetComponent<AudioSource>();
-        selectAudio.clip = normalSpeak;
-        selectAudio.Play();
-        yield return new WaitForSeconds(3);
-        statusStart = false;
-        i++;
-    }
-    IEnumerator PlaySelectAudioBad()
-    {
-        statusStart = true;
-        selectAudio = GetComponent<AudioSource>();
-        selectAudio.clip = badSpeak;
-        selectAudio.Play();
-        yield return new WaitForSeconds(4);
-        statusStart = false;
-        i++;
+        else if (this.transform.localPosition.y < 0)
+        {
+            EndEpisode();
+        }
     }
 }
 
 ```
+
+- В корень проекта добавьте файл конфигурации нейронной сети,
+доступный в папке с файлами проекта по ссылке.
+Запустите работу ml-агента
+![image](https://user-images.githubusercontent.com/29748577/198323717-058180e6-6e5a-473c-a400-47705250c98a.png)
+
+-Вернитесь в проект Unity, запустите сцену, проверьте работу ML-Agent’a.
+Сделайте 3, 9, 27 копий модели «Плоскость-Сфера-Куб», запустите симуляцию сцены и наблюдайте за результатом обучения модели.
+После завершения обучения проверьте работу модели.
+![20221027_195707](https://user-images.githubusercontent.com/29748577/198325561-529d46a3-8ead-4054-9605-ebced8249cac.gif)
 
 ## Задание 2
 ### Реализовать запись в Google-таблицу набора данных, полученных с помощью линейной регрессии из лабораторной работы № 1

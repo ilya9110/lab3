@@ -9,7 +9,7 @@
 | Задание | Выполнение | Баллы |
 | ------ | ------ | ------ |
 | Задание 1 | * | 60 |
-| Задание 2 | # | 20 |
+| Задание 2 | * | 20 |
 | Задание 3 | # | 20 |
 
 знак "*" - задание выполнено; знак "#" - задание не выполнено;
@@ -120,86 +120,39 @@ public class RollerAgent : Agent
 ![20221027_195707](https://user-images.githubusercontent.com/29748577/198325561-529d46a3-8ead-4054-9605-ebced8249cac.gif)
 
 ## Задание 2
-### Реализовать запись в Google-таблицу набора данных, полученных с помощью линейной регрессии из лабораторной работы № 1
+### Подробно опишите каждую строку файла конфигурациинейронной сети, доступного в папке с файлами проекта по ссылке. Самостоятельнонайдите информацию о компонентах Decision Requester, Behavior Parameters, добавленных на сфере.
 Ход работы:
 
 ```py
 
-import gspread
-import numpy as np
-import matplotlib.pyplot as plt
-
-gc = gspread.service_account(filename='unity-365207-9cc8948d5ec2.json')
-sh = gc.open('UnitySheets')
-priceX = np.random.randint(2000, 10000, 11)
-priceX = np.array(priceX)
-priceY = np.random.randint(2000, 10000, 11)
-priceY = np.array(priceY)
-mon = list(range(1, 11))
-
-
-def model(a, b, x):
-  return a * x + b
-
-
-def loss_function(a, b, x, y):
-  num = len(x)
-  prediction = model(a, b, x)
-  return (0.5 / num) * (np.square(prediction - y)).sum()
-
-
-def optimize(a, b, x, y):
-  num = len(x)
-  prediction = model(a, b, x)
-  da = (1.0 / num) * ((prediction - y) * x).sum()
-  db = (1.0 / num) * (prediction - y).sum()
-  a = a - Lr * da
-  b = b - Lr * db
-  return a, b
-
-
-def iterate (a, b, x, y, times):
-  for i in range(times):
-    a, b = optimize(a, b, x, y)
-  return a, b
-
-
-x = [2, 11, 13, 16, 25, 36, 49, 56, 76, 84, 99]
-x = np.array(x)
-y = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-y = np.array(y)
-
-a = np.random.rand(1)
-b = np.random.rand(1)
-Lr = 0.000001
-
-a, b = iterate(a, b, priceX, priceY, 1)
-prediction = model(a, b, priceX)
-loss = loss_function(a, b, priceX, priceY)
-print(a, b, loss)
-plt.scatter(x, y)
-plt.plot(x, prediction)
-
-
-i = 0
-while i <= len(mon):
-    i += 1
-    if i == 0:
-        continue
-    else:
-        tempInf = ((prediction[i-1]-prediction[i-2])/prediction[i-2])*100
-        tempInf = str(tempInf)
-        tempInf = tempInf.replace('.', ',')
-        sh.sheet1.update(('A' + str(i)), str(i))
-        sh.sheet1.update(('B' + str(i)), str(prediction[i-1]//1))
-        sh.sheet1.update(('C' + str(i)), str(tempInf))
-        print(prediction)
+behaviors:
+  RollerBall:                        #Имя агента
+    trainer_type: ppo                #Устанавливаем режим обучения (Proximal Policy Optimization).
+    hyperparameters:                 #Задаются гиперпараметры.
+      batch_size: 10                 #Количество опытов на каждой итерации для обновления экстремумов функции.
+      buffer_size: 100               #Количество опыта, которое нужно набрать перед обновлением модели.
+      learning_rate: 3.0e-4          #Устанавливает шаг обучения (начальная скорость).
+      beta: 5.0e-4                   #Отвечает за случайность действия, повышая разнообразие и иследованность пространства обучения.
+      epsilon: 0.2                   #Порог расхождений между старой и новой политиками при обновлении.
+      lambd: 0.99                    #Определяет авторитетность оценок значений во времени. Чем выше значение, тем более авторитетен набор предыдущих оценок.
+      num_epoch: 3                   #Количество проходов через буфер опыта, при выполнении оптимизации.
+      learning_rate_schedule: linear #Определяет, как скорость обучения изменяется с течением времени, линейно уменьшает скорость.
+    network_settings:                #Определяет сетевые настройки.
+      normalize: false               #Отключается нормализация входных данных.
+      hidden_units: 128              #Количество нейронов в скрытых слоях сети.
+      num_layers: 2                  #Количество скрытых слоев для размещения нейронов.
+    reward_signals:                  #Задает сигналы о вознаграждении.
+      extrinsic:
+        gamma: 0.99                  #Коэффициент скидки для будущих вознаграждений.
+        strength: 1.0                #Шаг для learning_rate.
+    max_steps: 500000                #Общее количество шагов, которые должны быть выполнены в среде до завершения обучения.
+    time_horizon: 64                 #Количество циклов ML агента, хранящихся в буфере до ввода в модель.
+    summary_freq: 10000              #Количество опыта, который необходимо собрать перед созданием и отображением статистики.
 
 
 ```
-Скриншот GoogleSheets: 
-![image](https://user-images.githubusercontent.com/29748577/195120159-0787b0bf-1bc2-4ed6-bb0f-22f175d4d5a7.png)
-Скриншот PyCharm:![image](https://user-images.githubusercontent.com/29748577/195124478-bc66faae-fd3f-4c8d-aa6a-adae01fb5895.png)
+- Decision Requester - запрашивает решение через регулярные промежутки времени и обрабатывает чередование между ними во время обучения.
+- Behavior Parameters - определяет принятие объектом решений, в него указывается какой тип поведения будет использоваться: уже обученная модель или удалённый процесс обучения.
 
 
 ## Задание 3
